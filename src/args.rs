@@ -17,9 +17,17 @@ pub struct Args {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum Commands {
-    Read { entry: String },
+    Read { entry: String, to_copy: Option<ToCopy> },
     // Config,
 }
+#[derive(Debug, Clone, clap::ValueEnum)]
+pub enum ToCopy {
+    Password,
+    Username,
+    Title,
+    Info,
+}
+
 // impl clap::ValueEnum for Commands {
 //     fn value_variants<'a>() -> &'a [Self] {
 //         &[Self::ReadPass, Self::Configure]

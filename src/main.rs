@@ -18,15 +18,22 @@ fn main() -> Result<()> {
     let args = args::Args::parse();
     let use_best_result = args.use_best_result.unwrap_or(true);
     match args.command {
-        Read { entry } => {
+        Read { entry, to_copy } => {
+            let to_copy = to_copy.unwrap_or(args::ToCopy::Password);
             let pass = if let Some(pass) = args.im_stupid {
                 pass
             } else {
                 rpassword::prompt_password("Database key: ").unwrap()
             };
-            let db = open_db(args.db_path.into(), pass)?;
+            let db = open_db(std::fs::canonicalize(args.db_path)?, pass)?;
             let ent = get_best_match(&entry, &db, use_best_result)?;
-            println!("{}", ent.get_password().unwrap());
+            
+            println!("{}", match to_copy {
+                args::ToCopy::Password => ent.get_password().and_then(|x| Some(x.to_string())),
+                args::ToCopy::Username => ent.get_username().and_then(|x| Some(x.to_string())),
+                args::ToCopy::Title => ent.get_title().and_then(|x| Some(x.to_string())),
+                args::ToCopy::Info => Some(format!("Title: {}\nUsername: {}\nPassword: {}", ent.get_title().unwrap_or("Not found"), ent.get_username().unwrap_or("Not found"), ent.get_password().unwrap_or("Not found"))),
+            }.unwrap());
             //TODO Clipboard
         }
         // Config => {
