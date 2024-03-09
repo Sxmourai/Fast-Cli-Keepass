@@ -4,7 +4,8 @@ use clap::Subcommand;
 #[command(version, about)]
 pub struct Args {
     pub db_path: String,
-    pub db_pass: Option<String>,
+    #[arg(long, name="Put the password as a cli arg")]
+    pub im_stupid: Option<String>,
     #[command(subcommand)]
     pub command: Commands,
 }
