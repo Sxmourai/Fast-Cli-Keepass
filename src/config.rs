@@ -1,7 +1,8 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
 fn get_config_path() -> PathBuf {
-    let dirs = directories::ProjectDirs::from("dev", "Sxmourai", "Fast Cli Keepass").expect("Failed getting config dir");
+    let dirs = directories::ProjectDirs::from("dev", "Sxmourai", "Fast Cli Keepass")
+        .expect("Failed getting config dir");
     dirs.config_dir().join("config.toml")
 }
 
@@ -16,18 +17,17 @@ pub enum ConfigCreateError {
 
 /// Creates the file if it doesn't exist
 pub fn ensure_created() -> Option<()> {
-    match std::fs::DirBuilder::new()
-        .create(
-            directories::ProjectDirs::from("dev", "Sxmourai", "Fast Cli Keepass")
-                .unwrap()
-                .config_dir(),
-        ) {
-            Ok(_) => {},
-            Err(err) => match err.kind() {
-                std::io::ErrorKind::AlreadyExists => {},
-                _ => panic!("Error creating config directory"),
-            },
-        }
+    match std::fs::DirBuilder::new().create(
+        directories::ProjectDirs::from("dev", "Sxmourai", "Fast Cli Keepass")
+            .unwrap()
+            .config_dir(),
+    ) {
+        Ok(_) => {}
+        Err(err) => match err.kind() {
+            std::io::ErrorKind::AlreadyExists => {}
+            _ => panic!("Error creating config directory"),
+        },
+    }
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .append(true)
@@ -46,19 +46,20 @@ pub struct AppConfig {
 impl AppConfig {
     /// Creates a new config, and writes to *CONFIG*/config.toml
     pub fn new(db_path: PathBuf) -> Self {
+        //TODO Validate path
         let _self = Self {
             db_path: db_path.clone(),
         };
         let raw_config = toml::to_string_pretty(&_self).unwrap();
         let mut create_ops = std::fs::OpenOptions::new();
-        create_ops.create(true).write(true);
+        create_ops.create(true).write(true).truncate(true); // Truncate because we don't want previous content, we want to overwrite the file entirely
         match create_ops
             .open(get_config_path()) // TODO Ask user for config dir ? But then how do we know on next restart ?
-            .and_then(|mut f| {
-                f.write_all(raw_config.as_bytes())
-            })
+            .and_then(|mut f| f.write_all(raw_config.as_bytes()))
         {
-            Ok(_path) => {println!("Written config to {}", db_path.display())}
+            Ok(_path) => {
+                println!("Written config to {}", db_path.display())
+            }
             Err(err) => {
                 panic!("Can't create/write to db: {db_path:?} because {err:?}")
             }
@@ -66,7 +67,18 @@ impl AppConfig {
         _self
     }
     pub fn read() -> Self {
-        let raw = std::fs::read_to_string(get_config_path()).expect("Failed getting/reading config file");
+        let raw =
+            std::fs::read_to_string(get_config_path()).expect("Failed getting/reading config file");
         toml::from_str(&raw).expect("Failed parsing toml config")
+    }
+    pub fn raw_db(&self) -> File {
+        std::fs::File::open(&self.db_path).unwrap()
+    }
+    pub fn db(&self) -> keepass::Database {
+        keepass::Database::open(
+            &mut self.raw_db(),
+            keepass::DatabaseKey::new().with_password(&crate::input("Database key")),
+        )
+        .expect("Failed opening/parsing database")
     }
 }
