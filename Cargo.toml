@@ -10,11 +10,6 @@ clap = {version="4.5.2", features=["derive"]}
 # To read & parse the db
 keepass = "0.7.7"
 
-# For storing our app state
-# toml = "0.8.10"
-# directories = "5.0.1"
-# serde = {version="1.0.197", features=["derive"]}
-
 # To put the password in the clipboard
 copypasta = "0.10.1"
 
@@ -23,6 +18,9 @@ rpassword = "7.3.1"
 
 # For reporting errors to the user
 color-eyre = "0.6.2"
+
+# To find the entries the user is searching
+rust-fuzzy-search = "0.1.1"
 
 [profile.dev.package."*"]
 opt-level = 3

@@ -31,14 +31,16 @@ fn main() -> Result<()> {
             if verbose > 0 {
                 println!("Searching {entry} in db...",);
             }
-            let entries = get_matching(&db, &entry, 4);
+            let mut entries = get_matching(&db, &entry);
+            entries.sort_by(|(s1,_), (s2,_)|s1.total_cmp(s2));
+            let entries = entries.into_iter().filter(|(s,_)|*s>0.5).collect::<Vec<(f32, &keepass::db::Entry)>>();
             if entries.len()==0 {
                 return Err(color_eyre::Report::msg("Found no matches"))
             }
             if entries.len()>1 {
                 return Err(color_eyre::Report::msg("TODO: Support multiple results"))
             }
-            for ent in entries {
+            for (_, ent) in entries {
                 if verbose > 0 {
                     println!(
                         "Found \"{}\": {}",
@@ -80,40 +82,21 @@ fn open_db(db_path: PathBuf, pass: String) -> Result<Database> {
     )?)
 }
 
+/// Returns the scores of the entries
 fn get_matching<'a>(
     db: &'a keepass::Database,
-    to_match: &str,
-    min_score: u32,
-) -> Vec<&'a keepass::db::Entry> {
+    query: &str,
+) -> Vec<(f32, &'a keepass::db::Entry)> {
     db.root
         .iter()
         .map(|child| {
             match child {
-                keepass::db::NodeRef::Group(_grp) => return None, //todo!("parse {:?}",grp),
+                keepass::db::NodeRef::Group(_grp) => None, //todo!("parse {:?}",grp),
                 keepass::db::NodeRef::Entry(ent) => {
-                    for (_title, val) in [
-                        ("title", ent.get_title()),
-                        ("username", ent.get_username()),
-                        ("url", ent.get_url()),
-                    ] {
-                        if let Some(val) = val {
-                            let mut score = 0;
-                            for (_i, (c, c2)) in val.chars().zip(to_match.chars()).enumerate() {
-                                if c.to_lowercase().collect::<String>()
-                                    == c2.to_lowercase().collect::<String>()
-                                {
-                                    score += 1
-                                }
-                            }
-                            if score > min_score {
-                                return Some(ent);
-                            }
-                        }
-                    }
-                    return None;
+                    let score = rust_fuzzy_search::fuzzy_compare(query, &format!("{}{}{}",ent.get_title().unwrap(),ent.get_username().unwrap(),ent.get_url().unwrap()));
+                    return Some((score, ent));
                 }
-            };
-            unreachable!()
+            }
         })
         .filter(|ent| ent.is_some())
         .map(|ent| ent.unwrap())
