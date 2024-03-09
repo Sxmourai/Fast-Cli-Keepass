@@ -6,10 +6,7 @@ pub struct Args {
     pub db_path: String,
     #[arg(long, name = "Put the password as a cli arg")]
     pub im_stupid: Option<String>,
-    #[arg(
-        long,
-        name = "Use the best result if there are multiple matches",
-    )]
+    #[arg(long, name = "Use the best result if there are multiple matches")]
     pub use_best_result: Option<bool>,
     #[command(subcommand)]
     pub command: Commands,
@@ -17,7 +14,10 @@ pub struct Args {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum Commands {
-    Read { entry: String, to_copy: Option<ToCopy> },
+    Read {
+        entry: String,
+        to_copy: Option<ToCopy>,
+    },
     // Config,
 }
 #[derive(Debug, Clone, clap::ValueEnum)]

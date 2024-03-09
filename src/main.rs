@@ -27,13 +27,22 @@ fn main() -> Result<()> {
             };
             let db = open_db(std::fs::canonicalize(args.db_path)?, pass)?;
             let ent = get_best_match(&entry, &db, use_best_result)?;
-            
-            println!("{}", match to_copy {
-                args::ToCopy::Password => ent.get_password().and_then(|x| Some(x.to_string())),
-                args::ToCopy::Username => ent.get_username().and_then(|x| Some(x.to_string())),
-                args::ToCopy::Title => ent.get_title().and_then(|x| Some(x.to_string())),
-                args::ToCopy::Info => Some(format!("Title: {}\nUsername: {}\nPassword: {}", ent.get_title().unwrap_or("Not found"), ent.get_username().unwrap_or("Not found"), ent.get_password().unwrap_or("Not found"))),
-            }.unwrap());
+
+            println!(
+                "{}",
+                match to_copy {
+                    args::ToCopy::Password => ent.get_password().map(|x| x.to_string()),
+                    args::ToCopy::Username => ent.get_username().map(|x| x.to_string()),
+                    args::ToCopy::Title => ent.get_title().map(|x| x.to_string()),
+                    args::ToCopy::Info => Some(format!(
+                        "Title: {}\nUsername: {}\nPassword: {}",
+                        ent.get_title().unwrap_or("Not found"),
+                        ent.get_username().unwrap_or("Not found"),
+                        ent.get_password().unwrap_or("Not found")
+                    )),
+                }
+                .unwrap()
+            );
             //TODO Clipboard
         }
         // Config => {
@@ -47,13 +56,13 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn input(msg: impl std::fmt::Display) -> Result<String> {
+fn _input(msg: impl std::fmt::Display) -> Result<String> {
     print!("{}: ", msg);
     io::stdout().flush()?;
     let mut buffer = String::new();
     let stdin = std::io::stdin();
     stdin.read_line(&mut buffer)?;
-    Ok(buffer.strip_suffix("\n").unwrap().to_string())
+    Ok(buffer.strip_suffix('\n').unwrap().to_string())
 }
 
 /// Returns the entry containing the best match
@@ -62,13 +71,13 @@ fn get_best_match<'a>(
     db: &'a Database,
     use_best_result: bool,
 ) -> Result<&'a keepass::db::Entry> {
-    let mut entries = get_matching(&db, search)?;
+    let mut entries = get_matching(db, search)?;
     entries.sort_by(|(s1, _), (s2, _)| s2.total_cmp(s1));
     let entries = entries
         .into_iter()
         .filter(|(s, _)| *s >= 0.5)
         .collect::<Vec<(f32, &keepass::db::Entry)>>();
-    if entries.len() == 0 {
+    if entries.is_empty() {
         Err(color_eyre::Report::msg("Found no matches"))
     } else if entries.len() > 1 {
         if use_best_result {
@@ -83,6 +92,13 @@ fn get_best_match<'a>(
         Ok(entries[0].1)
     }
 }
+
+// pub fn copy(to_copy: impl ToString) -> Result<()> {
+//     Ok(wl_clipboard_rs::copy::Options::new().copy(
+//         wl_clipboard_rs::copy::Source::Bytes(to_copy.to_string().into_bytes().into()),
+//         wl_clipboard_rs::copy::MimeType::Autodetect,
+//     )?)
+// }
 
 fn open_db(db_path: PathBuf, pass: String) -> Result<Database> {
     Ok(Database::open(
@@ -100,7 +116,7 @@ fn get_matching<'a>(
     Ok(db
         .root
         .iter()
-        .map(|child| {
+        .filter_map(|child| {
             match child {
                 keepass::db::NodeRef::Group(_grp) => None, //todo!("parse {:?}",grp),
                 keepass::db::NodeRef::Entry(ent) => {
@@ -113,11 +129,9 @@ fn get_matching<'a>(
                             ent.get_url().unwrap_or("")
                         ),
                     );
-                    return Some((score, ent));
+                    Some((score, ent))
                 }
             }
         })
-        .filter(|ent| ent.is_some())
-        .map(|ent| ent.unwrap())
         .collect())
 }

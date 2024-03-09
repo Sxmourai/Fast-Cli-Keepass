@@ -11,7 +11,7 @@ clap = {version="4.5.2", features=["derive"]}
 keepass = "0.7.7"
 
 # To put the password in the clipboard
-copypasta = "0.10.1"
+# wl-clipboard-rs = "0.8.1" # Doesn't work on my machine :c
 
 # To ask password from user
 rpassword = "7.3.1"
