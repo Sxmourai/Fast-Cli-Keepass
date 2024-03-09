@@ -357,6 +357,7 @@ dependencies = [
  "clap",
  "directories",
  "keepass",
+ "serde",
  "toml",
 ]
 
