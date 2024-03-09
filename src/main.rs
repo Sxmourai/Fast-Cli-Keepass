@@ -6,10 +6,7 @@ use std::{
 
 use keepass::Database;
 
-use color_eyre::{
-    eyre::Context as _,
-    Result,
-};
+use color_eyre::{eyre::Context as _, Result};
 
 pub mod args;
 // pub mod config;
@@ -18,8 +15,8 @@ use args::Commands::*;
 
 fn main() -> Result<()> {
     color_eyre::install()?;
-    let verbose = 0;
     let args = args::Args::parse();
+    let use_best_result = args.use_best_result.unwrap_or(true);
     match args.command {
         Read { entry } => {
             let pass = if let Some(pass) = args.im_stupid {
@@ -27,47 +24,10 @@ fn main() -> Result<()> {
             } else {
                 rpassword::prompt_password("Database key: ").unwrap()
             };
-            if verbose > 0 {
-                println!("Opening db at {}", args.db_path);
-            }
             let db = open_db(args.db_path.into(), pass)?;
-            if verbose > 0 {
-                println!("Searching {entry} in db...",);
-            }
-            let mut entries = get_matching(&db, &entry)?;
-            entries.sort_by(|(s1, _), (s2, _)| s2.total_cmp(s1));
-            let entries = entries
-                .into_iter()
-                .filter(|(s, _)| *s >= 0.5)
-                .collect::<Vec<(f32, &keepass::db::Entry)>>();
-            if entries.len() == 0 {
-                return Err(color_eyre::Report::msg("Found no matches"));
-            }
-            else if entries.len() > 1 {
-                if args.use_best_result {
-                    let (_, ent) = unsafe { entries.get_unchecked(0) }; // We are sure 0 is in the vec, because len > 1
-                    println!("{}", ent.get_password().unwrap());
-                    return Ok(());
-                } else {
-                    for (score, entry) in entries {
-                        println!("{score:?} - {}", entry.get_title().unwrap())
-                    }
-                    return Err(color_eyre::Report::msg("TODO: Support multiple results"));
-                }
-            }
-            for (_, ent) in entries {
-                if verbose > 0 {
-                    println!(
-                        "Found \"{}\": {}",
-                        ent.get_title().unwrap(),
-                        ent.get_password().unwrap()
-                    );
-                    println!("TODO Clipboard !");
-                    dbg!(ent.get_password());
-                } else {
-                    println!("{}", ent.get_password().unwrap());
-                }
-            }
+            let ent = get_best_match(&entry, &db, use_best_result)?;
+            println!("{}", ent.get_password().unwrap());
+            //TODO Clipboard
         }
         // Config => {
         //     let path = input("Database path");
@@ -87,6 +47,34 @@ fn input(msg: impl std::fmt::Display) -> Result<String> {
     let stdin = std::io::stdin();
     stdin.read_line(&mut buffer)?;
     Ok(buffer.strip_suffix("\n").unwrap().to_string())
+}
+
+/// Returns the entry containing the best match
+fn get_best_match<'a>(
+    search: &str,
+    db: &'a Database,
+    use_best_result: bool,
+) -> Result<&'a keepass::db::Entry> {
+    let mut entries = get_matching(&db, search)?;
+    entries.sort_by(|(s1, _), (s2, _)| s2.total_cmp(s1));
+    let entries = entries
+        .into_iter()
+        .filter(|(s, _)| *s >= 0.5)
+        .collect::<Vec<(f32, &keepass::db::Entry)>>();
+    if entries.len() == 0 {
+        Err(color_eyre::Report::msg("Found no matches"))
+    } else if entries.len() > 1 {
+        if use_best_result {
+            Ok(entries[0].1)
+        } else {
+            for (score, entry) in entries {
+                println!("{score:?} - {}", entry.get_title().unwrap())
+            }
+            Err(color_eyre::Report::msg("TODO: Support multiple results"))
+        }
+    } else {
+        Ok(entries[0].1)
+    }
 }
 
 fn open_db(db_path: PathBuf, pass: String) -> Result<Database> {

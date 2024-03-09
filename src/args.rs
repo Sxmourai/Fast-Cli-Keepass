@@ -9,9 +9,8 @@ pub struct Args {
     #[arg(
         long,
         name = "Use the best result if there are multiple matches",
-        default_value = "true"
     )]
-    pub use_best_result: bool,
+    pub use_best_result: Option<bool>,
     #[command(subcommand)]
     pub command: Commands,
 }
