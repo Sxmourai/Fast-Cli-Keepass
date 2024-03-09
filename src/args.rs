@@ -4,18 +4,21 @@ use clap::Subcommand;
 #[command(version, about)]
 pub struct Args {
     pub db_path: String,
-    #[arg(long, name="Put the password as a cli arg")]
+    #[arg(long, name = "Put the password as a cli arg")]
     pub im_stupid: Option<String>,
+    #[arg(
+        long,
+        name = "Use the best result if there are multiple matches",
+        default_value = "true"
+    )]
+    pub use_best_result: bool,
     #[command(subcommand)]
     pub command: Commands,
 }
 
-#[derive(Clone, Debug)]
-#[derive(Subcommand)]
+#[derive(Clone, Debug, Subcommand)]
 pub enum Commands {
-    Read {
-        entry: String,
-    },
+    Read { entry: String },
     // Config,
 }
 // impl clap::ValueEnum for Commands {
