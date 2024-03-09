@@ -3,38 +3,53 @@ use std::{
     path::PathBuf,
 };
 
-use crate::config::AppConfig;
+use keepass::Database;
+
+// use crate::config::AppConfig;
 
 pub mod args;
-pub mod config;
+// pub mod config;
 pub mod db;
 
 fn main() {
-    config::ensure_created().unwrap();
+    let verbose = 0;
     use clap::Parser;
-    let parser = args::Args::parse();
+    let args = args::Args::parse();
     {
         use args::Commands::*;
-        match parser.command {
+        match args.command {
             Read { entry } => {
-                let config = AppConfig::read();
-                let db = config.db();
-                println!("Search {entry} in db...",);
+                let pass = if let Some(pass) = args.db_pass {
+                    pass
+                } else {
+                    input("Database key")
+                };
+                if verbose>0 {
+                    println!("Opening db at {}", args.db_path);
+                }
+                let db = open_db(args.db_path.into(), pass);
+                if verbose>0 {
+                    println!("Searching {entry} in db...",);
+                }
                 for ent in get_matching(&db, &entry, 4) {
-                    println!(
-                        "Found \"{}\": {}",
-                        ent.get_title().unwrap(),
-                        ent.get_password().unwrap()
-                    );
-                    println!("TODO Clipboard !");
-                    dbg!(ent.get_password());
+                    if verbose>0 {
+                        println!(
+                            "Found \"{}\": {}",
+                            ent.get_title().unwrap(),
+                            ent.get_password().unwrap()
+                        );
+                        println!("TODO Clipboard !");
+                        dbg!(ent.get_password());
+                    } else {
+                        println!("{}", ent.get_password().unwrap());
+                    }
                 }
             }
-            Config => {
-                let path = input("Database path");
-                // let path = "/home/sxmourai/Notes obsidian/Files/private/Database.kdbx".to_string();
-                AppConfig::new(PathBuf::from(path));
-            }
+            // Config => {
+            //     let path = input("Database path");
+            //     // let path = "/home/sxmourai/Notes obsidian/Files/private/Database.kdbx".to_string();
+            //     AppConfig::new(PathBuf::from(path));
+            // }
             #[allow(unreachable_patterns)]
             _ => todo!(),
         }
@@ -48,6 +63,14 @@ fn input(msg: impl std::fmt::Display) -> String {
     let stdin = std::io::stdin();
     stdin.read_line(&mut buffer).unwrap();
     buffer.strip_suffix("\n").unwrap().to_string()
+}
+
+fn open_db(db_path: PathBuf, pass: String) -> Database {
+    Database::open(
+        &mut std::fs::File::open(db_path).unwrap(),
+        keepass::DatabaseKey::new().with_password(&pass),
+    )
+    .expect("Failed opening/parsing database")
 }
 
 fn get_matching<'a>(

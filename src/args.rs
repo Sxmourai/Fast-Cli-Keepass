@@ -3,6 +3,8 @@ use clap::Subcommand;
 #[derive(clap::Parser, Debug)]
 #[command(version, about)]
 pub struct Args {
+    pub db_path: String,
+    pub db_pass: Option<String>,
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -13,7 +15,7 @@ pub enum Commands {
     Read {
         entry: String,
     },
-    Config,
+    // Config,
 }
 // impl clap::ValueEnum for Commands {
 //     fn value_variants<'a>() -> &'a [Self] {
