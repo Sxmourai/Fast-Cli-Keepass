@@ -2,10 +2,19 @@
 name = "fast-cli-keepass"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/Sxmourai/Fast-Cli-Keepass"
+authors = ["Sxmourai"]
+description = "A tool to quickly find entries in a keepass database using the command-line"
+
+[package.metadata.wix]
+upgrade-guid = "9962CC5F-FBB5-4417-AF5A-02A4D458F995"
+path-guid = "EBECE461-8D12-46F6-87B0-0EE333846A3B"
+license = false
+eula = false
 
 [dependencies]
 # To parse cli args
-clap = {version="4.5.2", features=["derive"]}
+clap = { version = "4.5.2", features = ["derive"] }
 
 # To read & parse the db
 keepass = "0.7.7"
@@ -29,5 +38,27 @@ opt-level = 3
 opt-level = "s"
 overflow-checks = false
 strip = true
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.11.1"
+# CI backends to support
+ci = ["github"]
+# The installers to generate for each app
+installers = ["shell", "powershell", "homebrew", "msi"]
+# A GitHub repo to push Homebrew formulas to
+tap = "Sxmourai/FastCliKeepass"
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+# Publish jobs to run in CI
+publish-jobs = ["homebrew"]
+# Publish jobs to run in CI
+pr-run-mode = "plan"
 
 #todo addd color_eyre
